@@ -39,6 +39,24 @@ def downAndDisplayArtistImage(image_url):
 
 	imgcat(open("./artist_image.jpg"))
 
+def getDrummerSongs(drummer_id):
+
+	hasMoreSongs = True
+	page = 1
+
+	print("Also played on:")
+
+	while(hasMoreSongs):
+		URL = "https://api.genius.com/artists/{}/songs?sort=popularity&page={}".format(drummer_id, page)
+
+		response = getData(URL)
+
+		for song in response['response']['songs']:
+			print(song['full_title'])
+
+		hasMoreSongs = response['response']['next_page'] != None
+		page += 1
+
 def getDrummerBySongID(song_id):
 	URL = "https://api.genius.com/songs/{}".format(song_id)
 
@@ -55,8 +73,10 @@ def getDrummerBySongID(song_id):
 	for writer_artist in song['writer_artists']:
 		artist_info = getArtistById(writer_artist['id'])
 		if isArtistDrummer(artist_info):
-			printDrummer(artist_info['response']['artist']['name'])
-			downAndDisplayArtistImage(artist_info['response']['artist']['image_url'])
+			drummer = artist_info['response']['artist']
+			printDrummer(drummer['name'])
+			downAndDisplayArtistImage(drummer['image_url'])
+			getDrummerSongs(drummer['id'])
 			break
 
 
@@ -66,9 +86,12 @@ def getDrummerBySongID(song_id):
 	  		for drummer in custom_artist['artists']:
 	  			printDrummer(drummer['name'])
 	  			downAndDisplayArtistImage(drummer['image_url'])
+	  			getDrummerSongs(drummer['id'])
 	  			#print(drummer['url'])
 	  			#print(drummer['image_url'])
 	  			#print(drummer['api_path'])
+
+
 
 def main():
 	song_name = ' '.join(sys.argv[1:])
