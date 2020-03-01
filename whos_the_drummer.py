@@ -13,6 +13,7 @@ from imgcat import imgcat
 GENIUS_API_TOKEN=os.environ['GENIUS_API_TOKEN']
 MAX_RESULT_PAGES = 3
 create_artist_playlist = False
+get_artist_songs = False
 spotify_username = "SPOTIFY_USER_NAME"
 
 headers = {'Authorization': 'Bearer ' + GENIUS_API_TOKEN}
@@ -26,7 +27,7 @@ def authenticate_spotify():
 	return sp
 
 def chunks(list, n):
-    """Yield successive n-sized chunks from lst."""
+    """Yield successive n-sized chunks from list."""
     for i in range(0, len(list), n):
         yield list[i:i + n]
 
@@ -111,7 +112,8 @@ def getDrummerBySongID(song_id):
 			drummer_name = drummer['name']
 			printDrummer(drummer_name)
 			downAndDisplayArtistImage(drummer['image_url'])
-			getDrummerSongs(drummer['id'])
+			if get_artist_songs:
+				getDrummerSongs(drummer['id'])
 			break
 
 	if(drummer_name == ""):
@@ -121,7 +123,8 @@ def getDrummerBySongID(song_id):
 					drummer_name = drummer['name']
 					printDrummer(drummer_name)
 					downAndDisplayArtistImage(drummer['image_url'])
-					getDrummerSongs(drummer['id'])
+					if get_artist_songs:
+						getDrummerSongs(drummer['id'])
 
 def create_playlist():
 	playlist_name = "Drummer " + drummer_name + " Playlist"
@@ -137,9 +140,11 @@ def create_playlist():
 def main(args):
 	song_name = args.song
 
-	print('Getting drummer for : {}'.format(song_name))
+	print("List songs: " + str(get_artist_songs))
 	print("Create Playlist: " + str(create_artist_playlist))
 	print("Max song pages to get: " + str(MAX_RESULT_PAGES))
+
+	print('Getting drummer for : {}'.format(song_name))
 
 	SEARCH_URL = "https://api.genius.com/search?q={}".format(song_name)
 	search_results = requests.get(url = SEARCH_URL, headers = headers)
@@ -158,13 +163,21 @@ def setArgs(args):
 	global create_artist_playlist
 	global spotify_username
 	global MAX_RESULT_PAGES
+	global get_artist_songs
+
+	if args.list_songs:
+		get_artist_songs = True
 
 	if args.playlist:
 		create_artist_playlist = True
+		get_artist_songs = True
+
 	if args.username:
 		spotify_username = args.username
+
 	if (args.max_pages == 0):
 		MAX_RESULT_PAGES = 100000
+		
 	if (args.max_pages):
 		MAX_RESULT_PAGES = args.max_pages
 
@@ -173,6 +186,7 @@ parser.add_argument("song", type=str, help='song and/or band name')
 parser.add_argument("-p", "--playlist", action="store_true", default=False, help='create artist playlist on Spotify. Default is False')
 parser.add_argument("-u", "--username", type=str, help='Spotify username')
 parser.add_argument("-m", "--max_pages", type=int, help='maximum number of pages to list for artist songs. Default is 3. Set 0 for no limit')
+parser.add_argument("-l", "--list_songs", action="store_true", default=False, help='Get list of songs that artist played on')
 args = parser.parse_args()
 
 setArgs(args)
