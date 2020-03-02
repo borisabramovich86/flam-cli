@@ -19,7 +19,42 @@ spotify_username = "SPOTIFY_USER_NAME"
 headers = {'Authorization': 'Bearer ' + GENIUS_API_TOKEN}
 spotify_client = None
 track_list = []
-drummer_name = ""
+artist_name = ""
+active_artist_types = []
+
+#TODO save image in one dir, and not wherever program is activated
+#TODO create several playlists per musician type
+#TODO check if musician was found (by name), to not list hom twice
+
+class Drummer:  
+	label = "Drums"
+	check_artist_label = "drummer"
+	display_text = "Drummer - "
+	found = False
+
+class Bassist:
+	label = "Bass"
+	check_artist_label = "bassist"
+	display_text = "Bassist - "
+	found = False
+
+class Keyboardist:
+	label = "Keyboards"
+	check_artist_label = "keyboardist"
+	display_text = "Keyboardist - "
+	found = False
+
+class Guitarist:
+	label = "Guitar"
+	check_artist_label = "guitarist"
+	display_text = "Guitarist - "
+	found = False
+
+class Vocals:
+	label = "Vocals"
+	check_artist_label = "singer"
+	display_text = "Vocalist - "
+	found = False
 
 def authenticate_spotify():
 	scope = "playlist-modify-public"
@@ -27,9 +62,9 @@ def authenticate_spotify():
 	return sp
 
 def chunks(list, n):
-    """Yield successive n-sized chunks from list."""
-    for i in range(0, len(list), n):
-        yield list[i:i + n]
+	"""Yield successive n-sized chunks from list."""
+	for i in range(0, len(list), n):
+		yield list[i:i + n]
 
 def get_song_uri(song_name):
 	edited_song_name = song_name.replace('by', '')
@@ -52,12 +87,12 @@ def getArtistById(artist_id):
 	artist_data = getData(URL)
 	return artist_data
 
-def isArtistDrummer(artist_data):
+def checkArtistMatch(artist_label, artist_data):
 	artist_data_string = json.dumps(artist_data)
-	return "drummer" in artist_data_string
+	return artist_label in artist_data_string
 
-def printDrummer(name):
-	print(name, u'\U0001f918')
+def printDrummer(display_text, name):
+	print(display_text, name, u'\U0001f918')
 
 def downAndDisplayArtistImage(image_url):
 	r = requests.get(image_url)
@@ -72,7 +107,7 @@ def getDrummerSongs(drummer_id):
 	page = 1
 	song_counter = 0;
 
-	print("Also played on:")
+	print("Also collaborated on:")
 
 	while(hasMoreSongs and page <= MAX_RESULT_PAGES):
 		URL = "https://api.genius.com/artists/{}/songs?sort=popularity&page={}".format(drummer_id, page)
@@ -93,41 +128,38 @@ def getDrummerSongs(drummer_id):
 			
 	print("Found {} songs for artist".format(song_counter))
 
-def getDrummerBySongID(song_id):
-	global drummer_name
+def handle_match(artist_id, artist_name, artist_type, artist_image_url):
+	printDrummer(artist_type.display_text, artist_name)
+	downAndDisplayArtistImage(artist_image_url)
+	if get_artist_songs:
+		getDrummerSongs(artist_id)
+
+def check_artist_list_for_match(artist_list):
+	for featured_artist in artist_list:
+		for artist_type in active_artist_types:
+			artist_info = getArtistById(featured_artist['id'])
+			if checkArtistMatch(artist_type.check_artist_label, artist_info):
+				artist = artist_info['response']['artist']
+				handle_match(artist['id'], artist['name'], artist_type, artist['image_url'])
+
+def getArtistBySongID(song_id):
+	global artist_name
 	URL = "https://api.genius.com/songs/{}".format(song_id)
 	song_data = getData(URL)
 	song = song_data['response']['song']
-
 	print(song_id, song['full_title'])
+	check_artist_list_for_match(song['featured_artists'])
+	check_artist_list_for_match(song['writer_artists'])
 
-	for featured_artist in song['featured_artists']:
-		artist_info = getArtistById(featured_artist['id'])
-		isArtistDrummer(artist_info)
-
-	for writer_artist in song['writer_artists']:
-		artist_info = getArtistById(writer_artist['id'])
-		if isArtistDrummer(artist_info):
-			drummer = artist_info['response']['artist']
-			drummer_name = drummer['name']
-			printDrummer(drummer_name)
-			downAndDisplayArtistImage(drummer['image_url'])
-			if get_artist_songs:
-				getDrummerSongs(drummer['id'])
-			break
-
-	if(drummer_name == ""):
-		for custom_artist in song['custom_performances']:
-			if "Drums" in custom_artist['label']:
-				for drummer in custom_artist['artists']:
-					drummer_name = drummer['name']
-					printDrummer(drummer_name)
-					downAndDisplayArtistImage(drummer['image_url'])
-					if get_artist_songs:
-						getDrummerSongs(drummer['id'])
+	#if(artist_name == ""): # TODO check found per artist type
+	for custom_artist in song['custom_performances']:
+		for artist_type in active_artist_types:
+			if artist_type.label in custom_artist['label']:
+				for artist in custom_artist['artists']:
+					handle_match(artist['id'], artist['name'], artist_type, artist['image_url'])
 
 def create_playlist():
-	playlist_name = "Drummer " + drummer_name + " Playlist"
+	playlist_name = "Drummer " + artist_name + " Playlist"
 	print("Creating playlist: " + playlist_name)
 	print("Spotify username: " + spotify_username)
 
@@ -140,18 +172,21 @@ def create_playlist():
 def main(args):
 	song_name = args.song
 
+	if len(active_artist_types) == 0:
+		active_artist_types.append(Drummer)
+
 	print("List songs: " + str(get_artist_songs))
 	print("Create Playlist: " + str(create_artist_playlist))
 	print("Max song pages to get: " + str(MAX_RESULT_PAGES))
 
-	print('Getting drummer for : {}'.format(song_name))
+	print('Getting artists for : {}'.format(song_name))
 
 	SEARCH_URL = "https://api.genius.com/search?q={}".format(song_name)
 	search_results = requests.get(url = SEARCH_URL, headers = headers)
 	results = search_results.json()
 	song_id = results['response']['hits'][0]['result']['id']
 
-	getDrummerBySongID(song_id)
+	getArtistBySongID(song_id)
 
 	if(len(track_list) > 0):
 		print("Found {} songs on Spotify".format(len(track_list)))
@@ -164,6 +199,7 @@ def setArgs(args):
 	global spotify_username
 	global MAX_RESULT_PAGES
 	global get_artist_songs
+	global active_artist_types
 
 	if args.list_songs:
 		get_artist_songs = True
@@ -181,9 +217,33 @@ def setArgs(args):
 	if (args.max_pages):
 		MAX_RESULT_PAGES = args.max_pages
 
+	if(args.guitarist):
+		active_artist_types.append(Guitarist)
+
+	if(args.bass):
+		active_artist_types.append(Bassist)
+
+	if(args.drummer):
+		active_artist_types.append(Drummer)
+
+	if(args.keyboards):
+		active_artist_types.append(Keyboardist)
+
+	if(args.singer):
+		active_artist_types.append(Vocals)
+
+	if(args.all):
+		active_artist_types.extend([Drummer, Guitarist, Bassist, Vocals, Keyboardistx	])
+
 parser = argparse.ArgumentParser(description="Who's the drummer")
 parser.add_argument("song", type=str, help='song and/or band name')
 parser.add_argument("-p", "--playlist", action="store_true", default=False, help='create artist playlist on Spotify. Default is False')
+parser.add_argument("-g", "--guitarist", action="store_true", default=False, help='Get Guitarist/s for the song')
+parser.add_argument("-k", "--keyboards", action="store_true", default=False, help='Get Keyboard player for the song')
+parser.add_argument("-b", "--bass", action="store_true", default=False, help='Get Bass player for the song')
+parser.add_argument("-d", "--drummer", action="store_true", default=False, help='Get Drummer for the song')
+parser.add_argument("-s", "--singer", action="store_true", default=False, help='Get singer for the song')
+parser.add_argument("-a", "--all", action="store_true", default=False, help='Get all musicians for song')
 parser.add_argument("-u", "--username", type=str, help='Spotify username')
 parser.add_argument("-m", "--max_pages", type=int, help='maximum number of pages to list for artist songs. Default is 3. Set 0 for no limit')
 parser.add_argument("-l", "--list_songs", action="store_true", default=False, help='Get list of songs that artist played on')
