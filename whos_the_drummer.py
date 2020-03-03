@@ -11,20 +11,23 @@ from spotipy.oauth2 import SpotifyOAuth
 from imgcat import imgcat
 
 GENIUS_API_TOKEN=os.environ['GENIUS_API_TOKEN']
+SPOTIFY_USERNAME = os.environ['SPOTIFY_USER_NAME']
 MAX_RESULT_PAGES = 3
 create_artist_playlist = False
 get_artist_songs = False
-spotify_username = "SPOTIFY_USER_NAME"
+
 
 headers = {'Authorization': 'Bearer ' + GENIUS_API_TOKEN}
 spotify_client = None
 track_list = []
 artist_name = ""
 active_artist_types = []
+exclude_song_string = ""
 
 #TODO save image in one dir, and not wherever program is activated
 #TODO create several playlists per musician type
 #TODO check if musician was found (by name), to not list hom twice
+#TODO create playlist with MULTIPLE excpetions
 
 class Drummer:  
 	label = "Drums"
@@ -58,7 +61,7 @@ class Vocals:
 
 def authenticate_spotify():
 	scope = "playlist-modify-public"
-	sp = spotipy.Spotify(client_credentials_manager=SpotifyOAuth(scope=scope,username=spotify_username))
+	sp = spotipy.Spotify(client_credentials_manager=SpotifyOAuth(scope=scope,username=SPOTIFY_USERNAME))
 	return sp
 
 def chunks(list, n):
@@ -115,13 +118,14 @@ def getDrummerSongs(drummer_id):
 
 		for song in response['response']['songs']:
 			song_title = song['full_title']
-			print(song_title)
-			song_counter += 1
-			if(create_artist_playlist):
-				spotify_client = authenticate_spotify()
-				song_uri = get_song_uri(song_title)
-				if song_uri is not None:
-					track_list.append(song_uri)
+			if not exclude_song_string in song_title.lower():
+				print(song_title)
+				song_counter += 1
+				if(create_artist_playlist):
+					spotify_client = authenticate_spotify()
+					song_uri = get_song_uri(song_title)
+					if song_uri is not None:
+						track_list.append(song_uri)
 
 		hasMoreSongs = response['response']['next_page'] != None
 		page += 1
@@ -161,13 +165,13 @@ def getArtistBySongID(song_id):
 def create_playlist():
 	playlist_name = "Drummer " + artist_name + " Playlist"
 	print("Creating playlist: " + playlist_name)
-	print("Spotify username: " + spotify_username)
+	print("Spotify username: " + SPOTIFY_USERNAME)
 
-	new_playlist = spotify_client.user_playlist_create(spotify_username, playlist_name)
+	new_playlist = spotify_client.user_playlist_create(SPOTIFY_USERNAME, playlist_name)
 	playlist_id = new_playlist['id']
 	split_track_list = chunks(track_list, 100)
 	for track in split_track_list:
-		results = spotify_client.user_playlist_add_tracks(spotify_username, playlist_id, track)
+		results = spotify_client.user_playlist_add_tracks(SPOTIFY_USERNAME, playlist_id, track)
 
 def main(args):
 	song_name = args.song
@@ -178,6 +182,7 @@ def main(args):
 	print("List songs: " + str(get_artist_songs))
 	print("Create Playlist: " + str(create_artist_playlist))
 	print("Max song pages to get: " + str(MAX_RESULT_PAGES))
+	print("Exclude songs containing: " + exclude_song_string)
 
 	print('Getting artists for : {}'.format(song_name))
 
@@ -196,10 +201,11 @@ def main(args):
 
 def setArgs(args):
 	global create_artist_playlist
-	global spotify_username
+	global SPOTIFY_USERNAME
 	global MAX_RESULT_PAGES
 	global get_artist_songs
 	global active_artist_types
+	global exclude_song_string
 
 	if args.list_songs:
 		get_artist_songs = True
@@ -209,7 +215,7 @@ def setArgs(args):
 		get_artist_songs = True
 
 	if args.username:
-		spotify_username = args.username
+		SPOTIFY_USERNAME = args.username
 
 	if (args.max_pages == 0):
 		MAX_RESULT_PAGES = 100000
@@ -233,7 +239,10 @@ def setArgs(args):
 		active_artist_types.append(Vocals)
 
 	if(args.all):
-		active_artist_types.extend([Drummer, Guitarist, Bassist, Vocals, Keyboardistx	])
+		active_artist_types.extend([Drummer, Guitarist, Bassist, Vocals, Keyboardist])
+
+	if(args.exclude_songs):
+		exclude_song_string = args.exclude_songs
 
 parser = argparse.ArgumentParser(description="Who's the drummer")
 parser.add_argument("song", type=str, help='song and/or band name')
@@ -245,6 +254,7 @@ parser.add_argument("-d", "--drummer", action="store_true", default=False, help=
 parser.add_argument("-s", "--singer", action="store_true", default=False, help='Get singer for the song')
 parser.add_argument("-a", "--all", action="store_true", default=False, help='Get all musicians for song')
 parser.add_argument("-u", "--username", type=str, help='Spotify username')
+parser.add_argument("-e", "--exclude_songs", type=str, help='Exclude songs in playlist containing these strings')
 parser.add_argument("-m", "--max_pages", type=int, help='maximum number of pages to list for artist songs. Default is 3. Set 0 for no limit')
 parser.add_argument("-l", "--list_songs", action="store_true", default=False, help='Get list of songs that artist played on')
 args = parser.parse_args()
