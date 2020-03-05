@@ -2,3 +2,4 @@
 .idea/
 *.jpg
 .cache-*
+__pycache__/
