@@ -4,14 +4,12 @@ import requests
 import json
 import sys
 import os
-import spotipy
 import argparse
 
 import spotify
 import genius
 
 from pprint import pprint
-from spotipy.oauth2 import SpotifyOAuth
 from imgcat import imgcat
 
 from musician import Drummer, Guitarist, Vocals, Bassist, Keyboardist
@@ -63,7 +61,7 @@ def get_artist_songs_by_id(artist_id):
 		response = genius.get_artist_songs(artist_id, page)
 
 		for song in response["songs"]:
-			song_title = song['full_title'].replace(u'\xa0', u' ').lower()
+			song_title = song['title'].replace(u'\xa0', u' ').lower()
 			if not exclude_song_string:
 				song_counter += 1
 				parse_song(song_title)
@@ -78,9 +76,12 @@ def get_artist_songs_by_id(artist_id):
 			
 	print("Found {} songs for artist".format(song_counter))
 
-def handle_match(artist_id, artist_name, artist_type, artist_image_url):
-	print_drummer(artist_type.display_text, artist_name)
+def handle_match(artist_id, name, artist_type, artist_image_url):
+	global artist_name
+
+	print_drummer(artist_type.display_text, name)
 	download_and_display_image(artist_image_url)
+	artist_name = name
 	if get_artist_songs:
 		get_artist_songs_by_id(artist_id)
 
@@ -96,14 +97,11 @@ def check_artist_list_for_match(artist_list):
 				handle_match(artist['id'], artist['name'], artist_type, artist['image_url'])
 
 def get_artist_by_song_id(song_id):
-	global artist_name
-
 	song = genius.get_song_by_id(song_id)
 	print(song_id, song['full_title'])
 	check_artist_list_for_match(song['featured_artists'])
 	check_artist_list_for_match(song['writer_artists'])
 
-	#if(artist_name == ""): # TODO check found per artist type
 	for custom_artist in song['custom_performances']:
 		for index, artist_type in enumerate(active_artist_types):
 			if artist_type.label in custom_artist['label']:
@@ -131,7 +129,7 @@ def main(args):
 		print("Found {} songs on Spotify".format(len(track_list)))
 
 	if (create_artist_playlist and len(active_artist_types) == 1):
-		create_playlist("")
+		spotify.create_playlist(track_list, artist_name)
 
 def set_args(args):
 	global create_artist_playlist
