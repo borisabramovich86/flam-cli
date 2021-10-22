@@ -1,0 +1,97 @@
+#!/Users/boris2/opt/miniconda3/envs/snakes/bin/python
+
+import argparse
+
+from whos_the_drummer import WhosTheDrummer
+from musician import Drummer, Guitarist, Vocals, Bassist, Keyboardist
+import genius
+
+create_artist_playlist = False
+get_artist_songs = False
+artist_name = ""
+active_artist_types = []
+exclude_song_string = None
+MAX_RESULT_PAGES = 3
+
+def main(args):
+  song_name = args.song
+
+  if len(active_artist_types) == 0:
+    active_artist_types.append(Drummer())
+
+  print("List songs: " + str(get_artist_songs))
+  print("Create Playlist: " + str(create_artist_playlist))
+  print("Max song pages to get: " + str(MAX_RESULT_PAGES))
+  print("Exclude songs containing: " + str(exclude_song_string))
+  print('Getting artists for : {}'.format(song_name))
+
+  song_id = genius.get_first_search_result(song_name)
+
+  wtd = WhosTheDrummer(active_artist_types, create_artist_playlist, get_artist_songs, exclude_song_string)
+  wtd.get_artist_by_song_id(song_id)
+
+def set_args(args):
+	global create_artist_playlist
+	global SPOTIFY_USERNAME
+	global MAX_RESULT_PAGES
+	global get_artist_songs
+	global active_artist_types
+	global exclude_song_string
+
+	if args.list_songs:
+		get_artist_songs = True
+
+	if args.playlist:
+		create_artist_playlist = True
+		get_artist_songs = True
+
+	if args.username:
+		SPOTIFY_USERNAME = args.username
+
+	if (args.max_pages == 0):
+		MAX_RESULT_PAGES = 100000
+		
+	if (args.max_pages):
+		MAX_RESULT_PAGES = args.max_pages
+
+	if(args.guitarist):
+		active_artist_types.append(Guitarist())
+
+	if(args.bass):
+		active_artist_types.append(Bassist())
+
+	if(args.drummer):
+		active_artist_types.append(Drummer())
+
+	if(args.keyboards):
+		active_artist_types.append(Keyboardist())
+
+	if(args.singer):
+		active_artist_types.append(Vocals())
+
+	if(args.all):
+		active_artist_types.extend([Drummer(), Guitarist(), Bassist(), Vocals(), Keyboardist()])
+
+	if(args.exclude_songs):
+		split_exclusions = args.exclude_songs.split(",")
+		exclude_song_string = list(map(lambda x: x.replace(u'\xa0', u' ').lower(), split_exclusions))
+
+def define_args():
+	parser = argparse.ArgumentParser(description="Who's the drummer")
+	parser.add_argument("song", type=str, help='song and/or band name')
+	parser.add_argument("-p", "--playlist", action="store_true", default=False, help='create artist playlist on Spotify. Default is False')
+	parser.add_argument("-g", "--guitarist", action="store_true", default=False, help='Get Guitarist for the song')
+	parser.add_argument("-k", "--keyboards", action="store_true", default=False, help='Get Keyboard player for the song')
+	parser.add_argument("-b", "--bass", action="store_true", default=False, help='Get Bassist for the song')
+	parser.add_argument("-d", "--drummer", action="store_true", default=False, help='Get Drummer for the song')
+	parser.add_argument("-s", "--singer", action="store_true", default=False, help='Get Singer for the song')
+	parser.add_argument("-a", "--all", action="store_true", default=False, help='Get all musicians for song')
+	parser.add_argument("-u", "--username", type=str, help='Spotify username')
+	parser.add_argument("-e", "--exclude_songs", type=str, help='Exclude songs in playlist containing these strings, seperated by comma')
+	parser.add_argument("-m", "--max_pages", type=int, help='maximum number of pages to list for artist songs. Default is 3. Set 0 for no limit')
+	parser.add_argument("-l", "--list_songs", action="store_true", default=False, help='Get list of songs that artist played on')
+	return parser.parse_args()	
+
+args = define_args()
+set_args(args)
+main(args)
