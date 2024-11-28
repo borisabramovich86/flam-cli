@@ -15,7 +15,7 @@ GENIUS_API_TOKEN
 
 Usage  
 
-`flam --help ` 
+`flam --help `   
 `flam 'Ride on ACDC'` - Get drummer for the song  
 `flam -g 'Ride on ACDC'` - Get guitarists for the song  
 `flam -b 'Ace of spades'` - Get bassist for the song  

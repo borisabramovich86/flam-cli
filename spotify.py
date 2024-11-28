@@ -74,16 +74,16 @@ def get_all_artist_tracks(artist_name):
 def create_playlist(track_list, artist_name):
 	sc = get_client()
 	playlist_name = "Musician " + artist_name + " Playlist"
-	print("Creating playlist: " + playlist_name)
+	print("Creating Spotify playlist: " + playlist_name)
 	print("Spotify username: " + SPOTIFY_USERNAME)
 
 	new_playlist = sc.user_playlist_create(SPOTIFY_USERNAME, playlist_name)
 	playlist_id = new_playlist['id']
 	artist_uri = get_artist_uri(artist_name)
-	# artist_top_tracks = get_artist_top_tracks(artist_uri)
-	# track_list.extend(artist_top_tracks)
-	# all_artist_tracks = get_all_artist_tracks(artist_name)
-	# track_list.extend(all_artist_tracks)
+	artist_top_tracks = get_artist_top_tracks(artist_uri)
+	track_list.extend(artist_top_tracks)
+	all_artist_tracks = get_all_artist_tracks(artist_name)
+	track_list.extend(all_artist_tracks)
 	split_track_list = chunks(track_list, 100)
 	for track in split_track_list:
 		results = sc.user_playlist_add_tracks(SPOTIFY_USERNAME, playlist_id, track)
