@@ -1,4 +1,4 @@
-#!/Users/boris2/opt/miniconda3/envs/snakes/bin/python
+#!/usr/bin/env python3
 
 import argparse
 
